@@ -8,13 +8,29 @@ const {
   fetchPostsCtrl,
   updatepostCtrl,
 } = require("../../controllers/posts/posts");
-
+const postRoutes = express.Router();
 const protected = require("../../middlewares/protected");
+const Post = require("../../model/post/Post");
 
 //instance of multer
-const upload = multer({ storage });
+const upload = multer({
+  storage,
+});
 
-const postRoutes = express.Router();
+//forms
+
+postRoutes.get("/get-post-form", (req, res) => {
+  res.render("posts/addPost", { error: "" });
+});
+
+postRoutes.get("/get-form-update/:id", async (req, res) => {
+  try {
+    const post = await Post.findById(req.params.id);
+    res.render("posts/updatePost", { post, error: "" });
+  } catch (error) {
+    res.render("posts/updatePost", { error, post: "" });
+  }
+});
 
 //POST/api/v1/posts
 postRoutes.post("/", protected, upload.single("file"), createPostCtrl);

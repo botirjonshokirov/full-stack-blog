@@ -1,17 +1,18 @@
+const Comment = require("../../model/comment/Comment");
 const Post = require("../../model/post/Post");
 const User = require("../../model/user/User");
-const Comment = require("../../model/comment/Comment");
 const appErr = require("../../utils/appErr");
 //create
 const createCommentCtrl = async (req, res, next) => {
   const { message } = req.body;
   try {
-    //find the post
+    //Find the post
     const post = await Post.findById(req.params.id);
     //create the comment
     const comment = await Comment.create({
       user: req.session.userAuth,
       message,
+      post: post._id,
     });
     //push the comment to post
     post.comments.push(comment._id);
@@ -23,10 +24,9 @@ const createCommentCtrl = async (req, res, next) => {
     //save
     await post.save({ validateBeforeSave: false });
     await user.save({ validateBeforeSave: false });
-    res.json({
-      status: "success",
-      data: comment,
-    });
+    console.log(post);
+    //redirect
+    res.redirect(`/api/v1/posts/${post._id}`);
   } catch (error) {
     next(appErr(error));
   }
@@ -35,17 +35,22 @@ const createCommentCtrl = async (req, res, next) => {
 //single
 const commentDetailsCtrl = async (req, res, next) => {
   try {
-    res.json({
-      status: "success",
-      user: "Post comments",
+    const comment = await Comment.findById(req.params.id);
+    res.render("comments/updateComment", {
+      comment,
+      error: "",
     });
+    console.log("comment", comment);
   } catch (error) {
-    next(appErr(error));
+    res.render("comments/updateComment", {
+      error: error.message,
+    });
   }
 };
 
 //delete
 const deleteCommentCtrl = async (req, res, next) => {
+  console.log(req.query.postId);
   try {
     //find the comment
     const comment = await Comment.findById(req.params.id);
@@ -53,13 +58,10 @@ const deleteCommentCtrl = async (req, res, next) => {
     if (comment.user.toString() !== req.session.userAuth.toString()) {
       return next(appErr("You are not allowed to delete this comment", 403));
     }
-
     //delete comment
     await Comment.findByIdAndDelete(req.params.id);
-    res.json({
-      status: "success",
-      data: "Post has been deleted successfully",
-    });
+    //redirect
+    res.redirect(`/api/v1/posts/${req.query.postId}`);
   } catch (error) {
     next(appErr(error));
   }
@@ -68,17 +70,18 @@ const deleteCommentCtrl = async (req, res, next) => {
 //Update
 const upddateCommentCtrl = async (req, res, next) => {
   try {
+    console.log("query", req.query);
     //find the comment
     const comment = await Comment.findById(req.params.id);
+
     if (!comment) {
-      return next(appErr("Comment not found"));
+      return next(appErr("Comment Not Found"));
     }
-    //check if the comment belongs to the user
+    //check if the post belongs to the user
     if (comment.user.toString() !== req.session.userAuth.toString()) {
       return next(appErr("You are not allowed to update this comment", 403));
     }
-
-    //update comment
+    //update
     const commentUpdated = await Comment.findByIdAndUpdate(
       req.params.id,
       {
@@ -88,10 +91,9 @@ const upddateCommentCtrl = async (req, res, next) => {
         new: true,
       }
     );
-    res.json({
-      status: "success",
-      data: commentUpdated,
-    });
+
+    //redirect
+    res.redirect(`/api/v1/posts/${req.query.postId}`);
   } catch (error) {
     next(appErr(error));
   }
